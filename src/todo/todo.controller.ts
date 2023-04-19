@@ -6,14 +6,22 @@ import {
   Patch,
   Post,
   Query,
+  Res,
 } from '@nestjs/common';
 import { Todo } from './dto/todo.dto';
+import { TodoService } from './todo.service';
 
 @Controller('todo')
 export class TodoController {
+  constructor(private readonly todoService: TodoService) {}
   @Get()
-  getAllTodos() {
-    return [];
+  async getAllTodos(@Res() res) {
+    try {
+      const docs = await this.todoService.getTodosFromFirestore();
+      res.status(200).json({ data: docs, error: null });
+    } catch (e) {
+      res.status().json({ error: 'err' });
+    }
   }
 
   @Get(':username')
@@ -23,7 +31,8 @@ export class TodoController {
 
   @Post()
   createTodo(@Body() todo: Todo) {
-    return {};
+    todo.id = new Date().getTime().toString();
+    return { todo };
   }
 
   @Patch(':username')
