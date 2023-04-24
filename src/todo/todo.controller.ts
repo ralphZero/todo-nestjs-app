@@ -2,13 +2,16 @@ import {
   Body,
   Controller,
   Get,
+  HttpException,
+  HttpStatus,
+  NotFoundException,
   Param,
   Patch,
   Post,
   Query,
   Res,
 } from '@nestjs/common';
-import { Todo } from './dto/todo.dto';
+import { CreateTodoDto } from './dto/todo.dto';
 import { TodoService } from './todo.service';
 
 @Controller('todo')
@@ -18,21 +21,31 @@ export class TodoController {
   async getAllTodos(@Res() res) {
     try {
       const docs = await this.todoService.getTodosFromFirestore();
-      res.status(200).json({ data: docs, error: null });
+      return { data: docs, error: null };
     } catch (e) {
-      res.status().json({ error: 'err' });
+      throw new NotFoundException();
     }
   }
 
   @Get(':username')
-  getTodoByUser(@Param('username') username: string) {
-    return { username };
+  async getTodoByUser(@Param('username') username: string) {
+    try {
+      const todos = await this.todoService.getTodoByUserFromFirestore(username);
+      if (todos.length) return todos;
+      else throw new NotFoundException();
+    } catch (err) {
+      throw new HttpException({ err }, HttpStatus.NOT_FOUND);
+    }
   }
 
   @Post()
-  createTodo(@Body() todo: Todo) {
-    todo.id = new Date().getTime().toString();
-    return { todo };
+  createTodo(@Body() todo: CreateTodoDto) {
+    try {
+      this.todoService.createTodo(todo);
+      return { code: HttpStatus.CREATED, message: 'Task created successfully' };
+    } catch (err) {
+      throw new HttpException({ err }, HttpStatus.BAD_REQUEST);
+    }
   }
 
   @Patch(':username')
